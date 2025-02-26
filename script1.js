@@ -49,9 +49,9 @@ const npcMessage = {
 const controlsImage = new Image(200, 200);
 controlsImage.src = 'img/controls.png';
 const backgrounds = [
-    'project-background-1.png',
-    'project-background-2.png',
-    'project-background-3.png'
+    'img/project-background-1.png',
+    'img/project-background-2.png',
+    'img/project-background-3.png'
 ];
 let scrollPosition = 0;
 const backgroundImages = backgrounds.map(src => {
