@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fretux</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="img/favicon.ico " type=image/x-icon>
+</head>
+<body>
+<!-- Welcome Screen -->
+<div id="welcome-screen">
+  <div id="welcome-content">
+    <h1 id="welcome-text">Click the Image below to enter my website!</h1>
+    <img id="enter-button" src="img/Penguin_Normal.png" alt="Enter Website"/>
+    <img id="turn-device-sideways" src="img/turn-device-sideways.png" alt="Enter Website"/>
+    <button id="dark-mode-toggle" class="dark-mode-toggle">
+      🌙<br>
+      Dark Mode
+    </button>
+  </div>
+</div>
+
+<!-- Game Container -->
+<div id="game-container">
+  <canvas id="game-canvas"></canvas>
+  <div id="content-overlay">
+    <h1 id="section-title"></h1>
+    <p id="section-content"></p>
+  </div>
+
+  <!-- "?" Block Explanatory Text -->
+  <div id="block-info" class="hidden">
+    <h1>Welcome!</h1>
+    <p>Hello and Welcome to my Portfolio Page! On here, you can find all my projects and information about myself. (If
+      you're really interested) ;). Anyway, have fun exploring the Page!</p>
+  </div>
+</div>
+
+<section id="projects">
+  <div class="project">
+    <h3 class="project-name">TRLStats</h3>
+    <p class="project-description">An online javascript & python application that helps calculate damage stats for the
+      Game 'The Red Lake'!</p>
+    <img src="Project_TrlStats.png" alt="TRLStats">
+    <p class="long-description" data-project-name="TRLStats">TRLStats was my first project ever made, a damage
+      calculator for the Roblox Game 'The Red Lake'. The Project is based on a python file, using the python library
+      "Flask" to grab the data from JSON files, and then Javascript to display it.</p>
+    <a class="link" href="https://fretux.ch/trlstats" data-project-name="TRLStats">Link to the Website</a>
+    <p class="tags">HTML</p>
+    <p class="tags">CSS</p>
+    <p class="tags">Javascript</p>
+    <p class="tags">Python</p>
+    <p class="tags">JSON</p>
+  </div>
+  <div class="project">
+    <h3 class="project-name">SBB-History</h3>
+    <p class="project-description">A Website about the creation of the SBB (Swiss Train Corporation) with an
+      interactable map!</p>
+    <img src="SBB-History.png" alt="SBB-History">
+    <p class="long-description" data-project-name="SBB-History">For a School Project, me and 2 friends had to create a
+      page about the economic history of a part of the swiss, which we chose to do about the "SBB", the Swiss Train
+      Coorporation, founded in 1902. It is a simple Website, using HTML, CSS and Javascript, alongside the "Maptiler"
+      API for the interactive map.</p>
+    <a class="link" href="https://sbb-history.fretux.ch" data-project-name="SBB-History">Link to the Website</a>
+    <p class="tags">HTML</p>
+    <p class="tags">CSS</p>
+    <p class="tags">Javascript</p>
+  </div>
+  <div class="pagination-controls">
+    <button id="prev-button" disabled>Previous</button>
+    <button id="next-button">Next</button>
+  </div>
+  <!-- More projects here -->
+</section>
+<div id="detailsContainer"
+     style="display:none; position:fixed; top:20%; left:20%; width:60%; height:60%; background:white; padding:20px; overflow:auto; box-shadow: 0 0 10px rgba(0,0,0,0.5);">
+  <!-- Details will be loaded here -->
+</div>
+
+<!-- NPC Dialog Overlay (initially hidden via CSS) -->
+<div id="npc-dialog" class="hidden">
+  <div id="npc-dialog-content">
+    <p id="npc-dialog-text">Hello! I am Frederik Spirgi/Fretux, the creator of this Website!<br>Ask me anything you want
+      and I'll answer what I can!</p>
+    <button id="dialog-option-1">Tell me more about your background!</button>
+    <br>
+    <button id="dialog-option-2">What technologies did you use to build this site?</button>
+    <br>
+    <button id="dialog-option-3">Why did you create this interactive website?</button>
+    <br>
+    <h6>(You can leave the house by pressing Enter again)</h6>
+  </div>
+</div>
+
+<div id="mobile-controls">
+  <button id="move-left-button"><</button>
+  <button id="jump-button">^</button>
+  <button id="move-right-button">></button>
+  <button id="interact-button">Interact</button>
+  <button id="interact-character-button" class="hidden">Interact with Character</button>
+</div>
+
+
+<!-- Snowfall Container -->
+<div id="snow-container"></div>
+<script type="text/javascript" src="script1.js"></script>
+<script type="text/javascript" src="Tutorial.js"></script>
+<script type="text/javascript" src="darkmode.js"></script>
+</body>
+</html>
