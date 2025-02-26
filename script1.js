@@ -16,7 +16,7 @@ const detailsScrollStep = 30;
 let detailsMaxScroll = 0;
 let gameState = "outside";
 const interiorBackground = new Image();
-interiorBackground.src = "house-interior.png";
+interiorBackground.src = "img/house-interior.png";
 let lastInputTime = performance.now();
 let isPaused = false;
 const MAP_WIDTH = 3000;
@@ -26,7 +26,7 @@ const dialogOption1 = document.getElementById("dialog-option-1");
 const dialogOption2 = document.getElementById("dialog-option-2");
 const dialogOption3 = document.getElementById("dialog-option-3");
 const menuBackground = new Image();
-menuBackground.src = "menu-background-projects-1.png";
+menuBackground.src = "img/menu-background-projects-1.png";
 let menuVisible = false;
 const message = {
     x: 0,
@@ -137,7 +137,7 @@ let camera = {
 
 //Trees
 const treeImage = new Image();
-treeImage.src = "image-tree-1.png";
+treeImage.src = "./img/image-tree-1.png";
 const treeCount = 10;
 const treeWidth = 200;
 const treeHeight = 300;
@@ -289,15 +289,11 @@ function drawCharacterBig() {
 function handlePhysics(deltaTime) {
     character.dy += gravity * (deltaTime / frameDuration);
     character.y += character.dy * (deltaTime / frameDuration);
-
-    // Handle floor collision
     if (character.y + character.height > floorHeight) {
         character.y = floorHeight - character.height;
         character.dy = 0;
         isJumping = false;
     }
-
-    // Update horizontal movement based on keyState
     if (keyState.ArrowRight) character.dx = character.speed * (deltaTime / frameDuration);
     if (keyState.ArrowLeft) character.dx = -character.speed * (deltaTime / frameDuration);
     if (keyState.d) character.dx = character.speed * (deltaTime / frameDuration);
@@ -311,10 +307,7 @@ function moveCharacter() {
 }
 
 function updateCamera() {
-    // Center the camera on the character if you like:
     camera.x = character.x - camera.width / 2;
-
-    // Clamp the camera so it doesn't go outside the world:
     if (camera.x < 0) camera.x = 0;
     if (camera.x + camera.width > MAP_WIDTH) {
         camera.x = MAP_WIDTH - camera.width;
@@ -331,7 +324,6 @@ function handleInteractions() {
     });
 }
 
-//draw trees
 function drawSections() {
     trees.forEach((tree) => {
         ctx.drawImage(
@@ -621,18 +613,18 @@ const house = {
 };
 
 const NPCImage = new Image();
-NPCImage.src = 'me.png';
+NPCImage.src = 'img/me.png';
 NPC.texture = NPCImage
 const houseImage = new Image();
-houseImage.src = 'House.png';
+houseImage.src = 'img/House.png';
 house.texture = houseImage;
 const inactiveImage = new Image();
-inactiveImage.src = 'info-box-1-inactive.png';
+inactiveImage.src = 'img/info-box-1-inactive.png';
 const activeImage = new Image();
-activeImage.src = 'info-box-1-active.png';
+activeImage.src = 'img/info-box-1-active.png';
 questionBlock.texture = inactiveImage;
 const questBoardImage = new Image();
-questBoardImage.src = 'quest-board-1.png'
+questBoardImage.src = 'img/quest-board-1.png'
 questBoard.texture = questBoardImage
 let particles = [];
 
