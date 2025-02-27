@@ -9,11 +9,11 @@ darkModeToggle.addEventListener('click', () => {
   if (document.body.classList.contains('dark-mode')) {
     localStorage.setItem('darkMode', 'enabled');
     darkModeToggle.style.color = "black";
-    darkModeToggle.innerHTML = "☀️<br>Light Mode";
+    darkModeToggle.innerHTML = "☀️<br>Toggle Light Mode";
   } else {
     localStorage.setItem('darkMode', 'disabled');
     darkModeToggle.style.color = "white";
-    darkModeToggle.innerHTML = "🌙<br>Dark Mode";
+    darkModeToggle.innerHTML = "🌙<br>Toggle Dark Mode";
   }
 });
 
