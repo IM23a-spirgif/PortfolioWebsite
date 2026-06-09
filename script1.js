@@ -215,8 +215,123 @@ window.addEventListener("keyup", (e) => {
 const closeButton = {
     width: 30,
     height: 30,
-    color: "rgba(255, 255, 255, 0.5)",
+    color: "rgba(15, 23, 42, 0.9)",
 };
+
+const uiTheme = {
+    font: "'Trebuchet MS', Verdana, sans-serif",
+    text: "#102033",
+    mutedText: "#496071",
+    panel: "rgba(248, 252, 255, 0.92)",
+    panelDark: "rgba(12, 22, 36, 0.9)",
+    accent: "#2f7dd3",
+    accentWarm: "#f0b84f",
+    border: "rgba(255, 255, 255, 0.7)",
+    shadow: "rgba(9, 24, 43, 0.22)"
+};
+
+function viewportWidth() {
+    return camera.width || window.innerWidth;
+}
+
+function viewportHeight() {
+    return camera.height || window.innerHeight;
+}
+
+function getInteriorLayout() {
+    const width = viewportWidth();
+    const height = viewportHeight();
+    const paddingX = Math.min(100, width * 0.06);
+    const paddingY = Math.min(28, height * 0.04);
+    const originalWidth = interiorBackground.width || 1920;
+    const originalHeight = interiorBackground.height || 1080;
+    const scale = Math.min(
+        (width - paddingX * 2) / originalWidth,
+        (height - paddingY * 2) / originalHeight
+    );
+    const scaledWidth = originalWidth * scale;
+    const scaledHeight = originalHeight * scale;
+
+    return {
+        x: (width - scaledWidth) / 2,
+        y: (height - scaledHeight) / 2,
+        width: scaledWidth,
+        height: scaledHeight,
+        floorY: (height - scaledHeight) / 2 + scaledHeight - 58
+    };
+}
+
+function currentFloorHeight() {
+    return gameState === "inside" ? getInteriorLayout().floorY : floorHeight;
+}
+
+function roundedRectPath(x, y, width, height, radius) {
+    const r = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + width, y, x + width, y + height, r);
+    ctx.arcTo(x + width, y + height, x, y + height, r);
+    ctx.arcTo(x, y + height, x, y, r);
+    ctx.arcTo(x, y, x + width, y, r);
+    ctx.closePath();
+}
+
+function fillRoundedRect(x, y, width, height, radius, fillStyle) {
+    roundedRectPath(x, y, width, height, radius);
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+}
+
+function strokeRoundedRect(x, y, width, height, radius, strokeStyle, lineWidth = 1) {
+    roundedRectPath(x, y, width, height, radius);
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+}
+
+function drawPanel(x, y, width, height, radius = 24, fillStyle = uiTheme.panel) {
+    ctx.save();
+    ctx.shadowColor = uiTheme.shadow;
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 16;
+    fillRoundedRect(x, y, width, height, radius, fillStyle);
+    ctx.shadowColor = "transparent";
+    strokeRoundedRect(x, y, width, height, radius, uiTheme.border, 1.5);
+    ctx.restore();
+}
+
+function drawButton(x, y, width, height, label, options = {}) {
+    const fill = options.fill || uiTheme.panelDark;
+    const textColor = options.textColor || "#ffffff";
+    const radius = options.radius || 16;
+    ctx.save();
+    ctx.shadowColor = "rgba(9, 24, 43, 0.18)";
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 8;
+    fillRoundedRect(x, y, width, height, radius, fill);
+    ctx.shadowColor = "transparent";
+    strokeRoundedRect(x, y, width, height, radius, options.border || "rgba(255,255,255,0.18)", 1);
+    ctx.fillStyle = textColor;
+    ctx.font = `${options.size || 16}px ${uiTheme.font}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, x + width / 2, y + height / 2);
+    ctx.restore();
+}
+
+function drawPrompt(text, x, y) {
+    ctx.save();
+    ctx.font = `700 18px ${uiTheme.font}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const paddingX = 18;
+    const width = ctx.measureText(text).width + paddingX * 2;
+    const height = 42;
+    drawPanel(x - width / 2, y - height / 2, width, height, 18, "rgba(8, 19, 34, 0.82)");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(text, x, y);
+    ctx.restore();
+}
 
 //Sections
 const sections = [
@@ -268,11 +383,12 @@ function drawCharacterBig() {
     const frameX = currentFrame * frameWidth;
     const scaledWidth = frameWidth * 3;
     const scaledHeight = frameHeight * 3;
+    const drawY = currentFloorHeight() - scaledHeight;
     if (character.facingRight) {
         ctx.drawImage(
             spriteSheet,
             frameX, 0, frameWidth, frameHeight,
-            character.x - camera.x, character.y, scaledWidth, scaledHeight
+            character.x - camera.x, drawY, scaledWidth, scaledHeight
         );
     } else {
         ctx.save();
@@ -280,17 +396,18 @@ function drawCharacterBig() {
         ctx.drawImage(
             spriteSheet,
             frameX, 0, frameWidth, frameHeight,
-            -(character.x - camera.x + scaledWidth), character.y, scaledWidth, scaledHeight
+            -(character.x - camera.x + scaledWidth), drawY, scaledWidth, scaledHeight
         );
         ctx.restore();
     }
 }
 
 function handlePhysics(deltaTime) {
+    const activeFloorHeight = currentFloorHeight();
     character.dy += gravity * (deltaTime / frameDuration);
     character.y += character.dy * (deltaTime / frameDuration);
-    if (character.y + character.height > floorHeight) {
-        character.y = floorHeight - character.height;
+    if (character.y + character.height > activeFloorHeight) {
+        character.y = activeFloorHeight - character.height;
         character.dy = 0;
         isJumping = false;
     }
@@ -325,7 +442,12 @@ function handleInteractions() {
 }
 
 function drawSections() {
+    drawDistantHills();
     trees.forEach((tree) => {
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        fillRoundedRect(tree.x - camera.x + tree.width * 0.2, floorHeight - 18, tree.width * 0.6, 18, 50, "#17324a");
+        ctx.restore();
         ctx.drawImage(
             treeImage,
             tree.x - camera.x,
@@ -334,6 +456,50 @@ function drawSections() {
             tree.height
         );
     });
+}
+
+function drawSky() {
+    const width = viewportWidth();
+    const height = viewportHeight();
+    const isDark = document.body.classList.contains('dark-mode');
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    if (isDark) {
+        sky.addColorStop(0, "#111827");
+        sky.addColorStop(0.55, "#20324d");
+        sky.addColorStop(1, "#40546b");
+    } else {
+        sky.addColorStop(0, "#8fc9f2");
+        sky.addColorStop(0.55, "#c5e8fb");
+        sky.addColorStop(1, "#eef8ff");
+    }
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.globalAlpha = isDark ? 0.2 : 0.38;
+    const sunGradient = ctx.createRadialGradient(width * 0.78, height * 0.16, 8, width * 0.78, height * 0.16, 180);
+    sunGradient.addColorStop(0, isDark ? "#dbeafe" : "#fff9cf");
+    sunGradient.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = sunGradient;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+}
+
+function drawDistantHills() {
+    const parallaxX = camera.x * 0.18;
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = document.body.classList.contains('dark-mode') ? "#23364f" : "#7db1cf";
+    ctx.beginPath();
+    ctx.moveTo(-parallaxX - 100, floorHeight);
+    ctx.quadraticCurveTo(260 - parallaxX, floorHeight - 170, 650 - parallaxX, floorHeight - 70);
+    ctx.quadraticCurveTo(1040 - parallaxX, floorHeight - 230, 1460 - parallaxX, floorHeight - 90);
+    ctx.quadraticCurveTo(1960 - parallaxX, floorHeight - 220, 2460 - parallaxX, floorHeight - 75);
+    ctx.quadraticCurveTo(2850 - parallaxX, floorHeight - 170, MAP_WIDTH + 200 - parallaxX, floorHeight - 110);
+    ctx.lineTo(MAP_WIDTH + 200, floorHeight);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 }
 
 //Spawn Snowflakes
@@ -406,12 +572,22 @@ function drawSnowflakes() {
 }
 
 function drawFloor() {
+    const height = viewportHeight();
+    const ground = ctx.createLinearGradient(0, floorHeight, 0, height);
     if (document.body.classList.contains('dark-mode')) {
-        ctx.fillStyle = "#b8cee6";
+        ground.addColorStop(0, "#d9e8f7");
+        ground.addColorStop(1, "#7c92aa");
     } else {
-        ctx.fillStyle = "#cce5ff";
+        ground.addColorStop(0, "#f8fcff");
+        ground.addColorStop(1, "#c8e3f7");
     }
-    ctx.fillRect(0 - camera.x, floorHeight, MAP_WIDTH, canvas.height - floorHeight);
+    ctx.fillStyle = ground;
+    ctx.fillRect(0 - camera.x, floorHeight, MAP_WIDTH, height - floorHeight);
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0 - camera.x, floorHeight, MAP_WIDTH, 8);
+    ctx.restore();
 }
 
 
@@ -425,6 +601,7 @@ function update(currentTime) {
     if (deltaTime >= frameDuration) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (gameState === "outside") {
+            drawSky();
             createSnowflakes(deltaTime);
             drawSections();
             drawHouse();
@@ -471,20 +648,34 @@ function update(currentTime) {
 }
 
 function drawInterior() {
+    const width = viewportWidth();
+    const height = viewportHeight();
+    const room = getInteriorLayout();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const originalWidth = interiorBackground.width;
-    const originalHeight = interiorBackground.height;
-    const widthScale = canvas.width / originalWidth;
-    const heightScale = canvas.height / originalHeight;
-    const scale = Math.max(widthScale, heightScale);
-    const scaledWidth = originalWidth * scale;
-    const scaledHeight = originalHeight * scale;
-    const interiorX = (canvas.width - scaledWidth) / 2;
-    const interiorY = (canvas.height - scaledHeight) / 2;
-
-    ctx.drawImage(interiorBackground, interiorX, interiorY, scaledWidth, scaledHeight);
+    const roomGlow = ctx.createLinearGradient(0, 0, width, height);
+    roomGlow.addColorStop(0, "#17243a");
+    roomGlow.addColorStop(0.55, "#253653");
+    roomGlow.addColorStop(1, "#111827");
+    ctx.fillStyle = roomGlow;
+    ctx.fillRect(0, 0, width, height);
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 12;
+    ctx.drawImage(interiorBackground, room.x, room.y, room.width, room.height);
+    ctx.restore();
+    const vignette = ctx.createRadialGradient(
+        width / 2,
+        height / 2,
+        height * 0.1,
+        width / 2,
+        height / 2,
+        width * 0.75
+    );
+    vignette.addColorStop(0, "rgba(255,255,255,0)");
+    vignette.addColorStop(1, "rgba(3,8,18,0.38)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
 }
 
 window.addEventListener("keydown", (e) => {
@@ -530,9 +721,9 @@ enterButton.addEventListener("click", () => {
 });
 
 window.addEventListener("resize", () => {
-  if (gameContainer.style.display === "block") {
-    resizeCanvas();
-  }
+    if (gameContainer.style.display === "block") {
+        resizeCanvas();
+    }
 });
 
 function resizeCanvas() {
@@ -556,23 +747,11 @@ function resizeCanvas() {
 
     // Update house interior elements only when inside
     if (gameState === "inside") {
-        // Center interior background dynamically
-        const widthScale = canvas.width / interiorBackground.width;
-        const heightScale = canvas.height / interiorBackground.height;
-        const scale = Math.max(widthScale, heightScale);
-
-        interiorBackground.scaledWidth = interiorBackground.width * scale;
-        interiorBackground.scaledHeight = interiorBackground.height * scale;
-        interiorBackground.x = (canvas.width - interiorBackground.scaledWidth) / 2;
-        interiorBackground.y = (canvas.height - interiorBackground.scaledHeight) / 2;
-
-        // NPC should always stand at the bottom of the screen
-        NPC.y = canvas.height - NPC.height - 50; // 50px padding from bottom
+        const room = getInteriorLayout();
+        NPC.y = room.floorY - NPC.height * 1.5;
+        character.y = Math.min(character.y, room.floorY - character.height);
     }
 }
-
-
-
 
 
 const questionBlock = {
@@ -646,15 +825,18 @@ function handleNPCProximity() {
         npcMessage.visible = false;
         return;
     }
+    const npcScale = 1.5;
+    const npcDrawWidth = NPC.width * npcScale;
+    const npcDrawHeight = NPC.height * npcScale;
     const talkRadius = 60;
     const nearNPC =
         character.x + character.width > NPC.x - talkRadius &&
-        character.x < NPC.x + NPC.width + talkRadius &&
+        character.x < NPC.x + npcDrawWidth + talkRadius &&
         character.y + character.height > NPC.y - talkRadius &&
-        character.y < NPC.y + NPC.height + talkRadius;
+        character.y < NPC.y + npcDrawHeight + talkRadius;
     if (nearNPC) {
         npcMessage.visible = true;
-        npcMessage.x = NPC.x + NPC.width / 2;
+        npcMessage.x = NPC.x + npcDrawWidth / 2;
         npcMessage.y = NPC.y - 20;
     } else {
         npcMessage.visible = false;
@@ -663,27 +845,7 @@ function handleNPCProximity() {
 
 function drawNPCMessage() {
     if (!npcMessage.visible) return;
-
-    const padding = 10; // Padding around the text
-    ctx.save();
-
-    // Set text styles
-    ctx.font = "24px Arial";
-    ctx.textAlign = "center";
-    const textWidth = ctx.measureText(npcMessage.text).width;
-    const textHeight = 24;
-    const bgX = npcMessage.x - textWidth / 2 - padding;
-    const bgY = npcMessage.y - textHeight - padding;
-    const bgWidth = textWidth + padding * 2;
-    const bgHeight = textHeight + padding * 2;
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
-    ctx.fillStyle = "black";
-    ctx.fillText(npcMessage.text, npcMessage.x, npcMessage.y - textHeight / 2);
-    ctx.restore();
+    drawPrompt(npcMessage.text, npcMessage.x, npcMessage.y - 20);
 }
 
 window.addEventListener("keydown", (e) => {
@@ -926,6 +1088,7 @@ function handlePageNavigation(direction) {
 prevButton.addEventListener("click", () => handlePageNavigation(-1));
 nextButton.addEventListener("click", () => handlePageNavigation(1));
 let listenersAttached = false;
+let detailsBackListenerAttached = false;
 
 function preloadProjectImages() {
     projects.forEach(project => {
@@ -962,6 +1125,9 @@ function wrapText(text, maxWidth) {
 
 function toggleHouse() {
     if (gameState === "outside") {
+        const width = viewportWidth();
+        const height = viewportHeight();
+        const room = getInteriorLayout();
         console.log("Entering House")
         gameState = "inside";
         snowContainer.classList.add('paused');
@@ -971,15 +1137,14 @@ function toggleHouse() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const interiorX = 100;
-        const interiorY = 50;
-        const interiorWidth = canvas.width - 200;
-        const interiorHeight = canvas.height;
+        ctx.fillRect(0, 0, width, height);
         camera.x = 0;
         camera.y = 0;
-        character.x = 250;
-        ctx.drawImage(interiorBackground, interiorX, interiorY, interiorWidth, interiorHeight);
+        character.x = Math.max(room.x + 250, 170);
+        character.y = room.floorY - character.height;
+        NPC.x = Math.max(room.x + 70, 90);
+        NPC.y = room.floorY - NPC.height * 1.5;
+        ctx.drawImage(interiorBackground, room.x, room.y, room.width, room.height);
         console.log("Interior Loaded")
         const gameStateChangeEvent = new Event("gameStateChange");
         window.dispatchEvent(gameStateChangeEvent);
@@ -1001,7 +1166,7 @@ function toggleHouse() {
 function positionNPCDialog() {
     const rect = canvas.getBoundingClientRect();
     const dialogWidth = npcDialog.offsetWidth;
-    const dialogX = rect.left + (canvas.width / 2) - (dialogWidth / 2);
+    const dialogX = rect.left + (viewportWidth() / 2) - (dialogWidth / 2);
     const dialogY = rect.top + 20;
     npcDialog.style.left = `${dialogX}px`;
     npcDialog.style.top = `${dialogY}px`;
@@ -1053,103 +1218,116 @@ window.addEventListener("keydown", (e) => {
 
 function drawHouseMessage() {
     if (!houseMessage.visible) return;
-    ctx.save();
-    ctx.fillStyle = "#fff";
-    ctx.font = "24px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(houseMessage.text, houseMessage.x, houseMessage.y - 20);
-    ctx.restore();
+    drawPrompt(houseMessage.text, houseMessage.x, houseMessage.y - 20);
 }
 
 function drawMenu() {
+    const width = viewportWidth();
+    const height = viewportHeight();
     if (menuVisible && !selectedProject) {
         gameState = "Menu";
-        ctx.save();
-        ctx.filter = "blur(3px)";
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.restore();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(8, 17, 31, 0.58)";
+        ctx.fillRect(0, 0, width, height);
 
-        const isMobile = canvas.width <= 768; // Define mobile breakpoint
-        const horizontalMargin = isMobile ? 30 : 100; // Smaller margins on mobile
+        const isMobile = width <= 768;
+        const horizontalMargin = isMobile ? 18 : 90;
         const menuX = horizontalMargin;
-        const menuY = 50;
-        const menuWidth = canvas.width - horizontalMargin * 2;
-        const menuHeight = canvas.height - 100;
+        const menuY = isMobile ? 24 : 42;
+        const menuWidth = width - horizontalMargin * 2;
+        const menuHeight = height - menuY * 2;
 
-        ctx.drawImage(menuBackground, menuX, menuY, menuWidth, menuHeight);
+        drawPanel(menuX, menuY, menuWidth, menuHeight, 30, "rgba(240, 248, 255, 0.9)");
+        ctx.save();
+        ctx.fillStyle = uiTheme.text;
+        ctx.font = `700 ${isMobile ? 22 : 30}px ${uiTheme.font}`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText("Projects", menuX + 28, menuY + 24);
+        ctx.font = `${isMobile ? 13 : 15}px ${uiTheme.font}`;
+        ctx.fillStyle = uiTheme.mutedText;
+        ctx.fillText("Choose a project to inspect the build, stack, and result.", menuX + 30, menuY + (isMobile ? 56 : 64));
+        ctx.restore();
 
-        closeButton.x = menuX + menuWidth - closeButton.width - 10;
-        closeButton.y = menuY + 10;
-        ctx.fillStyle = closeButton.color;
-        ctx.fillRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
-        ctx.fillStyle = "white";
-        ctx.font = "20px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("X", closeButton.x + closeButton.width / 2, closeButton.y + closeButton.height / 2);
+        closeButton.width = 42;
+        closeButton.height = 42;
+        closeButton.x = menuX + menuWidth - closeButton.width - 18;
+        closeButton.y = menuY + 18;
+        drawButton(closeButton.x, closeButton.y, closeButton.width, closeButton.height, "X", {
+            fill: "rgba(15, 23, 42, 0.9)",
+            radius: 14,
+            size: 18
+        });
 
         const columns = projectsPerPage === 1 ? 1 : 2;
-        const projectWidth = (menuWidth - (columns + 1) * projectPadding) / columns;
-        const projectHeight = menuHeight * 0.9;
+        const topOffset = isMobile ? 96 : 116;
+        const navSpace = 78;
+        const cardGap = isMobile ? 16 : 26;
+        const projectWidth = (menuWidth - 56 - (columns - 1) * cardGap) / columns;
+        const projectHeight = menuHeight - topOffset - navSpace;
         const projectsToDisplay = getProjectsForCurrentPage();
 
         for (let i = 0; i < projectsToDisplay.length; i++) {
             const project = projectsToDisplay[i];
             const row = Math.floor(i / columns);
             const col = i % columns;
-            const projectBoxX = menuX + col * (projectWidth + projectPadding) + projectPadding;
-            const projectBoxY = menuY + row * (projectHeight + projectPadding) - scrollPosition;
+            const projectBoxX = menuX + 28 + col * (projectWidth + cardGap);
+            const projectBoxY = menuY + topOffset + row * (projectHeight + cardGap) - scrollPosition;
 
-            const randomBackground = selectedBackgrounds[projects.indexOf(project)];
-            ctx.drawImage(randomBackground, projectBoxX, projectBoxY, projectWidth, projectHeight);
+            drawPanel(projectBoxX, projectBoxY, projectWidth, projectHeight, 24, "rgba(255, 255, 255, 0.82)");
+            const accent = ctx.createLinearGradient(projectBoxX, projectBoxY, projectBoxX + projectWidth, projectBoxY);
+            accent.addColorStop(0, "rgba(47, 125, 211, 0.9)");
+            accent.addColorStop(1, "rgba(240, 184, 79, 0.9)");
+            fillRoundedRect(projectBoxX + 18, projectBoxY + 18, projectWidth - 36, 6, 10, accent);
 
-            ctx.fillStyle = "black";
-            ctx.font = `${projectFontSize}px Arial`;
+            ctx.fillStyle = uiTheme.text;
+            ctx.font = `700 ${projectFontSize + 8}px ${uiTheme.font}`;
             ctx.textAlign = "left";
+            ctx.textBaseline = "alphabetic";
 
-            const textX = projectBoxX + projectPadding * 2;
-            const textY = projectBoxY + projectPadding * 2.65;
+            const textX = projectBoxX + 24;
+            const textY = projectBoxY + 58;
 
-            const lines = wrapText(project.name, projectWidth - projectPadding * 4, 24);
-            let lineHeight = projectFontSize + 2;
+            const lines = wrapText(project.name, projectWidth - 48);
+            let lineHeight = projectFontSize + 12;
             lines.forEach((line, index) => {
                 ctx.fillText(line, textX, textY + index * lineHeight);
             });
 
-            const descriptionLines = wrapText(project.description, projectWidth - projectPadding * 4, 20);
-            let descriptionY = textY + lines.length * lineHeight + 10;
+            ctx.fillStyle = uiTheme.mutedText;
+            ctx.font = `${projectFontSize}px ${uiTheme.font}`;
+            const descriptionLines = wrapText(project.description, projectWidth - 48).slice(0, isMobile ? 3 : 4);
+            let descriptionY = textY + lines.length * lineHeight + 16;
             descriptionLines.forEach((line, index) => {
-                ctx.fillText(line, textX, descriptionY + index * 20);
+                ctx.fillText(line, textX, descriptionY + index * (projectFontSize + 7));
             });
 
             if (project.loadedImage) {
-                const fixedImageWidth = projectWidth * 0.8; // Adjust image width
-                const fixedImageHeight = projectHeight * 0.4;
-                const totalTextHeight = descriptionY + descriptionLines.length * projectFontSize;
-                const imageX = projectBoxX + (projectWidth - fixedImageWidth) / 2;
-                const imageY = totalTextHeight + projectPadding;
-
+                const fixedImageWidth = projectWidth - 48;
+                const fixedImageHeight = Math.max(120, projectHeight * 0.34);
+                const imageX = projectBoxX + 24;
+                const imageY = projectBoxY + projectHeight - fixedImageHeight - 88;
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = "high";
+                ctx.save();
+                roundedRectPath(imageX, imageY, fixedImageWidth, fixedImageHeight, 18);
+                ctx.clip();
                 ctx.drawImage(project.loadedImage, imageX, imageY, fixedImageWidth, fixedImageHeight);
-                const buttonWidth = projectWidth * 0.6;
-                const buttonHeight = 50; // Adjust button height
-                const buttonX = projectBoxX + (projectWidth - buttonWidth) / 2;
-                const buttonY = imageY + fixedImageHeight + projectPadding;
-                ctx.fillStyle = "black";
-                ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
-                ctx.fillStyle = "white";
-                ctx.font = "16px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText("See More", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2);
+                ctx.restore();
+                strokeRoundedRect(imageX, imageY, fixedImageWidth, fixedImageHeight, 18, "rgba(15, 23, 42, 0.12)", 1);
 
-                // Add padding to the hitbox for better touch accuracy
+                const buttonWidth = Math.min(projectWidth - 48, 220);
+                const buttonHeight = 48;
+                const buttonX = projectBoxX + (projectWidth - buttonWidth) / 2;
+                const buttonY = projectBoxY + projectHeight - 64;
+                drawButton(buttonX, buttonY, buttonWidth, buttonHeight, "See More", {
+                    fill: "#102033",
+                    radius: 16,
+                    size: 16
+                });
+
                 project.seeMoreButton = {
-                    x: buttonX - 10, // Extend hitbox horizontally
-                    y: buttonY - 10, // Extend hitbox vertically
+                    x: buttonX - 10,
+                    y: buttonY - 10,
                     width: buttonWidth + 20,
                     height: buttonHeight + 20,
                     projectIndex: i,
@@ -1157,38 +1335,41 @@ function drawMenu() {
             }
         }
 
-        const buttonWidth = 100;
-        const buttonHeight = 50;
-        const buttonPadding = 20;
+        const buttonWidth = isMobile ? 104 : 128;
+        const buttonHeight = 46;
+        const buttonPadding = 28;
         const prevButtonX = menuX + buttonPadding;
         const nextButtonX = menuX + menuWidth - buttonWidth - buttonPadding;
+        const navY = menuY + menuHeight - buttonHeight - 20;
 
-        ctx.fillStyle = "lightgray";
-        ctx.fillRect(prevButtonX, menuY + menuHeight - buttonHeight - 20, buttonWidth, buttonHeight);
-        ctx.fillStyle = "black";
-        ctx.font = "16px Arial";
+        drawButton(prevButtonX, navY, buttonWidth, buttonHeight, "Previous", {
+            fill: currentPage === 0 ? "rgba(73, 96, 113, 0.45)" : "#102033",
+            radius: 15,
+            size: 15
+        });
+        const maxPage = Math.ceil(projects.length / projectsPerPage) - 1;
+        drawButton(nextButtonX, navY, buttonWidth, buttonHeight, "Next", {
+            fill: currentPage === maxPage ? "rgba(73, 96, 113, 0.45)" : "#102033",
+            radius: 15,
+            size: 15
+        });
+        ctx.save();
+        ctx.fillStyle = uiTheme.mutedText;
+        ctx.font = `14px ${uiTheme.font}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("Previous", prevButtonX + buttonWidth / 2, menuY + menuHeight - buttonHeight / 2 - 20);
+        ctx.fillText(`${currentPage + 1} / ${maxPage + 1}`, menuX + menuWidth / 2, navY + buttonHeight / 2);
+        ctx.restore();
 
-        ctx.fillStyle = "lightgray";
-        ctx.fillRect(nextButtonX, menuY + menuHeight - buttonHeight - 20, buttonWidth, buttonHeight);
-        ctx.fillStyle = "black";
-        ctx.font = "16px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("Next", nextButtonX + buttonWidth / 2, menuY + menuHeight - buttonHeight / 2 - 20);
-
-        // Add padding to the hitboxes for "Previous" and "Next"
         this.prevButton = {
             x: prevButtonX - 10,
-            y: menuY + menuHeight - buttonHeight - 30,
+            y: navY - 10,
             width: buttonWidth + 20,
             height: buttonHeight + 20
         };
         this.nextButton = {
             x: nextButtonX - 10,
-            y: menuY + menuHeight - buttonHeight - 30,
+            y: navY - 10,
             width: buttonWidth + 20,
             height: buttonHeight + 20
         };
@@ -1238,71 +1419,74 @@ function drawMenu() {
             listenersAttached = true;
         }
     } else if (selectedProject) {
-        ctx.save();
-        ctx.filter = "blur(3px)";
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.restore();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const isMobile = canvas.width <= 768; // Define mobile breakpoint
-        const horizontalMargin = isMobile ? 30 : 100; // Smaller margins on mobile
+        ctx.fillStyle = "rgba(8, 17, 31, 0.62)";
+        ctx.fillRect(0, 0, width, height);
+        const isMobile = width <= 768;
+        const horizontalMargin = isMobile ? 18 : 120;
         const menuX = horizontalMargin;
-        const menuY = 50;
-        const menuWidth = canvas.width - horizontalMargin * 2; // Adjust width based on margin
-        const menuHeight = canvas.height - 100;
-        ctx.drawImage(menuBackground, menuX, menuY, menuWidth, menuHeight);
-        ctx.fillStyle = "black";
-        ctx.font = "24px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(selectedProject.name, canvas.width / 2, menuY + 50);
+        const menuY = isMobile ? 24 : 42;
+        const menuWidth = width - horizontalMargin * 2;
+        const menuHeight = height - menuY * 2;
+        drawPanel(menuX, menuY, menuWidth, menuHeight, 30, "rgba(250, 253, 255, 0.94)");
 
-        ctx.font = "16px Arial";
+        ctx.fillStyle = uiTheme.text;
+        ctx.font = `700 ${isMobile ? 24 : 34}px ${uiTheme.font}`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(selectedProject.name, menuX + 32, menuY + 28);
+
+        ctx.font = `${isMobile ? 15 : 17}px ${uiTheme.font}`;
         ctx.textAlign = "left";
 
-        const detailsTextX = menuX + 20;
-        const detailsTextY = menuY + 100;
-        const detailsTextWidth = menuWidth - 40;
+        const detailsTextX = menuX + 34;
+        const detailsTextY = menuY + (isMobile ? 88 : 104);
+        const detailsTextWidth = menuWidth - 68;
 
-        const longDescriptionLines = wrapText(selectedProject.longDescription, detailsTextWidth, 20);
-        const totalTextHeight = longDescriptionLines.length * 24;
+        const longDescriptionLines = wrapText(selectedProject.longDescription, detailsTextWidth);
+        const totalTextHeight = longDescriptionLines.length * 26;
 
-        // Draw the long description
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(menuX + 24, detailsTextY - 24, menuWidth - 48, menuHeight - 150);
+        ctx.clip();
+        ctx.fillStyle = uiTheme.mutedText;
+        ctx.font = `${isMobile ? 15 : 17}px ${uiTheme.font}`;
+        ctx.textBaseline = "alphabetic";
         longDescriptionLines.forEach((line, index) => {
-            const lineY = detailsTextY + index * 24 - detailsScrollPosition;
-            if (lineY > menuY + 80 && lineY < menuY + menuHeight - 60) {
+            const lineY = detailsTextY + index * 26 - detailsScrollPosition;
+            if (lineY > menuY + 78 && lineY < menuY + menuHeight - 82) {
                 ctx.fillText(line, detailsTextX, lineY);
             }
         });
 
-        // Draw the link element
         if (selectedProject.link) {
             const linkText = selectedProject.link.text;
             const linkUrl = selectedProject.link.url;
             const linkX = detailsTextX;
-            const linkY = detailsTextY + totalTextHeight + 40 - detailsScrollPosition;
-            const linkPadding = 10;
+            const linkY = detailsTextY + totalTextHeight + 32 - detailsScrollPosition;
+            const linkPadding = 14;
+            ctx.font = `700 16px ${uiTheme.font}`;
             const linkWidth = ctx.measureText(linkText).width + linkPadding * 2;
 
-            ctx.fillStyle = "blue";
-            ctx.font = "18px Arial";
-            ctx.textAlign = "left";
-            ctx.fillText(linkText, linkX + linkPadding, linkY);
-
-            ctx.fillStyle = "rgba(0, 0, 255, 0.1)";
-            ctx.fillRect(linkX, linkY - 20, linkWidth, 30);
+            if (linkY > menuY + 88 && linkY < menuY + menuHeight - 82) {
+                drawButton(linkX, linkY - 26, linkWidth, 42, linkText, {
+                    fill: uiTheme.accent,
+                    radius: 15,
+                    size: 16
+                });
+            }
 
             selectedProject.linkPosition = {
                 x: linkX,
-                y: linkY - 20,
+                y: linkY - 26,
                 width: linkWidth,
-                height: 30,
+                height: 42,
                 url: linkUrl
             };
 
-            // Move the image below the link
             if (selectedProject.loadedImage) {
-                const maxImageWidth = menuWidth - 40;
-                const maxImageHeight = menuHeight - detailsTextY - totalTextHeight - 60;
+                const maxImageWidth = menuWidth - 68;
+                const maxImageHeight = menuHeight * 0.38;
                 let imageWidth = selectedProject.loadedImage.width;
                 let imageHeight = selectedProject.loadedImage.height;
 
@@ -1314,51 +1498,65 @@ function drawMenu() {
                 imageHeight *= scale;
 
                 const imageX = menuX + (menuWidth - imageWidth) / 2;
-                const imageY = linkY + 40; // Position the image below the link element
+                const imageY = linkY + 44;
 
-                if (imageY + imageHeight > menuY + 80 && imageY < menuY + menuHeight - 60) {
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(
-                        selectedProject.loadedImage,
-                        imageX,
-                        Math.max(imageY, menuY + 80),
-                        imageWidth,
-                        Math.min(imageHeight, menuY + menuHeight - 60 - imageY)
-                    );
+                if (imageY + imageHeight > menuY + 88 && imageY < menuY + menuHeight - 82) {
+                    const visibleImageY = Math.max(imageY, menuY + 88);
+                    const visibleImageHeight = Math.min(imageHeight, menuY + menuHeight - 90 - visibleImageY);
+                    if (visibleImageHeight > 0) {
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.save();
+                        roundedRectPath(imageX, visibleImageY, imageWidth, visibleImageHeight, 20);
+                        ctx.clip();
+                        ctx.drawImage(
+                            selectedProject.loadedImage,
+                            imageX,
+                            visibleImageY,
+                            imageWidth,
+                            visibleImageHeight
+                        );
+                        ctx.restore();
+                    }
                 }
             }
         }
+        ctx.restore();
 
-        // Draw the back button
-        const backButtonWidth = 100;
-        const backButtonHeight = 60;
-        const backButtonX = canvas.width / 2 - backButtonWidth / 2;
-        const backButtonY = menuY + menuHeight - backButtonHeight - 20;
+        const backButtonWidth = 120;
+        const backButtonHeight = 48;
+        const backButtonX = width / 2 - backButtonWidth / 2;
+        const backButtonY = menuY + menuHeight - backButtonHeight - 22;
+        drawButton(backButtonX, backButtonY, backButtonWidth, backButtonHeight, "Back", {
+            fill: "#102033",
+            radius: 16,
+            size: 16
+        });
+        selectedProject.backButton = {
+            x: backButtonX,
+            y: backButtonY,
+            width: backButtonWidth,
+            height: backButtonHeight
+        };
 
-        ctx.fillStyle = "lightgray";
-        ctx.fillRect(backButtonX, backButtonY, backButtonWidth, backButtonHeight);
-        ctx.fillStyle = "black";
-        ctx.font = "16px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("Back", backButtonX + backButtonWidth / 2, backButtonY + backButtonHeight / 2);
-
-        canvas.addEventListener("click", function handleBackClick(e) {
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            if (
-                mouseX >= backButtonX &&
-                mouseX <= backButtonX + backButtonWidth &&
-                mouseY >= backButtonY &&
-                mouseY <= backButtonY + backButtonHeight
-            ) {
-                canvas.removeEventListener("click", handleBackClick);
-                closeDetailsMenu();
-            }
-        }, {once: true});
+        if (!detailsBackListenerAttached) {
+            canvas.addEventListener("click", (e) => {
+                if (!selectedProject || !selectedProject.backButton) return;
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const btn = selectedProject.backButton;
+                if (
+                    mouseX >= btn.x &&
+                    mouseX <= btn.x + btn.width &&
+                    mouseY >= btn.y &&
+                    mouseY <= btn.y + btn.height
+                ) {
+                    closeDetailsMenu();
+                }
+            });
+            detailsBackListenerAttached = true;
+        }
 
         detailsMaxScroll = Math.max(
             totalTextHeight + 40 + (selectedProject.loadedImage ? selectedProject.loadedImage.height : 0) - menuHeight + 160,
@@ -1368,10 +1566,7 @@ function drawMenu() {
     if (message.visible && !menuVisible && !selectedProject) {
         const textX = questBoard.x - camera.x + questBoard.width / 2;
         const textY = questBoard.y - 20;
-        ctx.fillStyle = "white";
-        ctx.font = "24px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(message.text, textX, textY);
+        drawPrompt(message.text, textX, textY);
     }
 }
 
